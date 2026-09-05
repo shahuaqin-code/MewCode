@@ -1,55 +1,40 @@
-# MewCode Checklist
+# 多协议 LLM 终端对话客户端 Checklist
 
-> 每一项通过运行代码或观察行为来验证，聚焦系统行为。
+> 每一项通过运行代码或观察行为来验证，聚焦系统行为；括号内为验证方式。
 
 ## 实现完整性
-
-- [ ] 配置加载与校验可用（验证：合法 / 非法 YAML 分别运行 `load_config`，行为符合 spec F1）
-- [ ] SSE 帧解析器对两种协议的事件流正确分帧（验证：SSE 相关单元测试全绿）
-- [ ] Anthropic 协议 Provider 产出正确事件序列与 thinking 参数（验证：provider 相关单元测试全绿）
-- [ ] OpenAI 协议 Provider 产出正确事件序列（验证：同上）
-- [ ] Session 成功才追加的历史语义（验证：session 相关单元测试全绿）
+- [ ] 配置加载：合法 `.mewcode/config.yaml` 能解析出 providers 列表（验证：单测 + 启动进入对话）。(AC1/F1)
+- [ ] 配置校验：缺密钥/非法 protocol/文件缺失时给出可读错误并非零退出，无未捕获堆栈（验证：删字段/改 protocol/删文件分别运行 `python -m mewcode`）。(AC1/N4)
+- [ ] 单 provider 直进：仅一条配置时启动直接进入对话（验证：单条配置运行）。(AC2/F2)
+- [ ] 多 provider 选择：多条配置时出现方向键 `OptionList`，选定后进入对话（验证：两条配置运行、上下选择 + Enter）。(AC2/F2)
+- [ ] 内置 system prompt 与历史随请求发送（验证：问"你的角色/规则"，回答体现内置 prompt；多轮见 AC6）。(AC4/F4)
+- [ ] thinking：anthropic 配 `thinking: true` 时启用，且界面不出现任何思考文本（验证：开启后观察仅最终回复）。(AC5/F5)
+- [ ] 流式逐字：回复以纯文本逐字出现（验证：长回复肉眼可见逐步输出）。(AC5/F8)
+- [ ] markdown 定型：回复结束后整段以 markdown 渲染（代码块/列表/强调正确）（验证：让模型输出含代码块与列表的内容）。(AC8/F8)
+- [ ] 多行输入：Alt+Enter 换行、Enter 提交、提交后输入框清空（验证：输入两行后提交）。(AC9/F9)
+- [ ] 响应计时：自提交即显示 `Imagining… (Ns)` 且秒数递增，结束后显示总耗时（验证：发一条慢回复观察）。(AC12/F12)
+- [ ] 错误反馈：错误 key/不存在模型时，错误在对话区可区分样式（红色）显示且不退出（验证：改坏 key 运行后再正常发一条）。(AC11/F11)
+- [ ] 退出：`/exit` 与 Ctrl+C 均能安全退出，终端恢复正常（验证：两种方式各试一次，观察无残留/错乱）。(AC10/F10/N7)
+- [ ] 界面布局：启动含猫 banner + 名称版本 + cwd + 就绪提示行 + 输入框（含 `❯` 与占位符）+ 状态栏（左 name 右 model）（验证：启动截图比对）。(AC7/F7)
 
 ## 集成
-
-- [ ] PROTOCOLS 注册表包含 anthropic 与 openai，两实现经统一 Provider 接口驱动（验证：pytest 全绿）
-- [ ] TUI 与 Provider 仅通过 StreamEvent 流交互（验证：FakeProvider 冒烟——替换真实 Provider 不改动 TUI 代码）
-- [ ] 退出清理链路：取消任务 → await 任务结束 → `provider.aclose()`（验证：退出时无挂起任务告警、进程干净退出）
+- [ ] TUI 通过统一 `Provider` Protocol 驱动两种协议，切换协议不改变上层交互（验证：分别用 anthropic / openai 配置跑同一组对话，行为一致）。(AC3/N3)
+- [ ] 多轮上下文携带：先告知信息、后追问，模型能正确引用前文；退出再启动后历史为空（验证：两轮对话 + 重启验证）。(AC6/F6)
+- [ ] 流式不阻塞：等待/流式期间界面仍响应、不冻结（验证：长回复期间界面持续刷新；asyncio event loop 不阻塞）。(AC13/N1)
+- [ ] scrollback 渲染（Claude Code 风格）：完成的消息（用户输入/助手回复/错误）追加到 `RichLog`，可用终端原生滚轮/Textual 滚动回看，退出后内容保留在终端历史中；动态区仅含输入框 + 正在流式的回复 + 状态栏（验证：tmux 多轮后回滚查看历史 + 退出后历史仍在）。
+- [ ] base_url 覆盖：为某 provider 配自定义 `base_url`（兼容端点）可正常收发（验证：配一个兼容端点跑通一轮）。(F3)
+- [ ] 窗口自适应：缩放终端宽度后输入框/对话区/markdown 不错版（验证：运行中调整终端宽度）。(N6)
 
 ## 编译与测试
-
-- [ ] 全部单元测试通过（验证：`.venv/bin/pytest` 全绿）
-- [ ] 全部模块可编译（验证：`.venv/bin/python -m py_compile` 全部通过）
-- [ ] lint 检查通过（如有配置）——当前无 lint 配置，跳过
+- [ ] `python -m mewcode` 能正常启动（在合法配置下进入 TUI）。
+- [ ] `ruff check .` 无告警。
+- [ ] `ruff format --check .` 通过（或本地 `ruff format .` 已统一格式）。
+- [ ] `pytest` 通过（`tests/test_config.py`、`tests/test_conversation.py`）。
+- [ ] （可选）`mypy src/mewcode` 通过（启用 strict 子集亦可）。
+- [ ] 密钥不回显/不打印：对话区与任何输出均不出现 `api_key`（验证：通读运行输出、检索无明文 key）。(N5)
 
 ## 端到端场景
-
-- [ ] 场景 1（AC1/AC6）：DeepSeek 配置（`api_key: ${DEEPSEEK_API_KEY}`）启动 → 输入问题 → 回复逐字流式出现并完整显示
-- [ ] 场景 2（AC3）：第一轮问「请解释什么是装饰器」→ 第二轮问「用一句话总结你刚才的解释」→ 回答正确引用第一轮内容
-- [ ] 场景 3（AC4）：DeepSeek + `thinking: true` 对话 → 先暗色斜体实时显示思考内容，随后正常样式显示回答
-- [ ] 场景 4（AC7/AC8/AC9/AC10）：四种非法输入——缺 `model`、`protocol` 非法、`api_key` 引用未设置的环境变量、`--provider` 名字不存在 → 各自显示指明配置项的可读错误并以退出码 1 退出
-- [ ] 场景 5（AC5）：openai 协议 + `thinking: true` 启动 → 打印警告，对话照常进行
-- [ ] 场景 5b：官方 Claude 不可关闭组模型（如 `claude-fable-5-1`）+ `thinking: false` 启动 → 打印「该模型默认启用思考且不支持关闭」警告
-- [ ] 场景 6（AC11）：多配置且不带 `--provider` 启动 → 出现交互选择界面，选定后进入对话
-- [ ] 场景 7（AC12）：`/exit`、Ctrl+C、Ctrl+D 三种方式均干净退出
-- [ ] 场景 8（AC13）：无效 api_key 发起对话 → 显示可读的认证错误，程序不崩溃，可继续输入或正常退出
-- [ ] 场景 9（AC14）：`base_url` 不可达 → 显示可读的网络错误，程序不崩溃
-- [ ] 场景 10（AC2）：openai 协议 provider 指向 DeepSeek OpenAI 兼容接口（`base_url: https://api.deepseek.com`，`model: deepseek-v4-pro`）→ 回复正常流式出现
-- [ ] 场景 11（AC15）：上述全部运行过程（含报错输出）中，屏幕与日志不出现完整 api_key 明文
-- [ ] 场景 12（截断提示）：FakeProvider 产出 `truncated=True` 的 StreamDone → 回答后显示「⚠ 回答达到输出上限，已截断」
-
-## spec 验收标准覆盖映射
-
-| spec AC | checklist 条目 |
-|---------|---------------|
-| AC1 / AC6 | 场景 1 |
-| AC2 | 场景 10 |
-| AC3 | 场景 2 |
-| AC4 | 场景 3 |
-| AC5 | 场景 5 |
-| AC7–AC10 | 场景 4 |
-| AC11 | 场景 6 |
-| AC12 | 场景 7 |
-| AC13 | 场景 8 |
-| AC14 | 场景 9 |
-| AC15 | 场景 11 |
+- [ ] 场景 1（anthropic 多轮）：单条 anthropic 配置启动 → 连续两轮、第二轮引用第一轮 → 流式 + 计时 + markdown 定型 → `/exit` 退出。
+- [ ] 场景 2（openai 流式）：openai 协议配置 → 发一条含代码块的请求 → 流式逐字后 markdown 渲染正确。
+- [ ] 场景 3（多 provider 选择）：两条配置 → 启动出现列表 → 选第二条 → 状态栏显示其 name/model → 正常对话。
+- [ ] 场景 4（错误恢复）：错误 key 触发失败 → 对话区红色错误、程序不退出 → 修正后（重启）继续正常对话。
