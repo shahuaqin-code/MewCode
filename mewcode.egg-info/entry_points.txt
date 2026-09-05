@@ -1,0 +1,2 @@
+[console_scripts]
+mewcode = mewcode.cli:main
