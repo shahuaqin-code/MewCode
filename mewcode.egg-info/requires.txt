@@ -1,7 +1,0 @@
-textual
-httpx
-PyYAML
-
-[dev]
-pytest
-pytest-asyncio

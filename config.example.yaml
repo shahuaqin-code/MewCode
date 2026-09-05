@@ -1,9 +1,0 @@
-# MewCode 配置示例
-# 复制为 ~/.mewcode/config.yaml 后按需修改
-providers:
-  - name: deepseek
-    protocol: anthropic
-    model: deepseek-v4-pro
-    base_url: https://api.deepseek.com/anthropic
-    api_key: ${DEEPSEEK_API_KEY}
-    thinking: true

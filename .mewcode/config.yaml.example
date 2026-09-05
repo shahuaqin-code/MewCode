@@ -1,0 +1,21 @@
+providers:
+  - name: deepseek
+    protocol: anthropic
+    model: deepseek-v4-pro
+    base_url: https://api.deepseek.com/anthropic
+    api_key: ${DEEPSEEK_API_KEY}
+    thinking: true
+
+#  - name: Claude
+#    protocol: anthropic
+#    api_key: "${ANTHROPIC_API_KEY}"
+#    model: "claude-sonnet-4-5"
+#    thinking: true
+#    # base_url: "https://your-anthropic-compatible-host"
+
+  # - name: OpenAI
+  #   protocol: openai
+  #   api_key: "${OPENAI_API_KEY}"
+  #   model: "gpt-4.1"
+  #   base_url: "https://api.openai.com/v1"
+  #   thinking: false  # OpenAI ignores this field.
